@@ -2,11 +2,41 @@
 name: gemini-dispatch
 description: >
   Protocol for invoking Gemini CLI subagents from orchestrator (Antigravity).
-  Use when task should be delegated to a specialized agent.
-  Handles: command building, model routing, parallel execution, result collection.
+  Use ONLY for junior/mid-level tasks. Complex architecture, algorithms,
+  and multi-file refactoring — Antigravity does directly. Never delegate senior work.
 ---
 
 # gemini-dispatch — Subagent Invocation Protocol
+
+## ⚠️ CRITICAL: Task Complexity Gate
+
+**Before dispatching ANY task — classify its complexity.**
+Gemini subagents = pre-middle level max. They write decent code for well-defined tasks, but lose context, drop constraints, and produce shallow results on anything complex.
+
+### Complexity classification
+
+| Level | Delegate? | Examples |
+|-------|-----------|---------|
+| 🟢 **Intern** (Flash Lite) | ✅ YES | Write .dockerignore, update .gitignore, simple configs |
+| 🟡 **Junior** (Flash) | ✅ YES | Documentation, simple data transforms, boilerplate |
+| 🔵 **Pre-Middle** (Pro) | ✅ YES | Unit tests for one module, simple CRUD, add logging, write fixtures, single-file utilities |
+| 🟠 **Middle** | ❌ NO — do yourself | Multi-file features, refactoring with side effects, integration logic, state management |
+| 🔴 **Senior** | ❌ NO — do yourself | Architecture, complex algorithms, multi-constraint design, risk manager, graph orchestration, security-critical code |
+
+### Decision rule
+```
+Ask yourself: "Can a pre-middle developer do this with a clear spec and no follow-up questions?"
+  YES → dispatch to subagent
+  NO  → do it yourself (Antigravity/Claude)
+```
+
+### NEVER delegate to subagents
+- Code that must follow 3+ interrelated constraints simultaneously
+- Anything touching risk management or security-critical paths
+- Multi-file refactoring or architecture changes
+- Tasks requiring deep project context or prior conversation knowledge
+- LangGraph graph design and agent orchestration
+- Code review of complex logic (reviewer agent can only catch surface issues)
 
 ## Invocation format
 
@@ -21,49 +51,68 @@ Flags:
 
 ## Model routing (auto via agent YAML `model:` field)
 
-| Tier | Model | Role | Agents |
-|------|-------|------|--------|
-| 🔴 Pro | `gemini-3.1-pro-preview` | Senior: architecture, review, math, research | python-dev, quant, langgraph-architect, reviewer, researcher, tester, data-analyst, prompt-smith |
-| 🟡 Flash | `gemini-3-flash-preview` | Junior: docs, simple analysis | documenter |
-| 🟢 Lite | `gemini-3.1-flash-lite-preview` | Intern: configs, simple edits | devops |
+| Tier | Model | Level | Good for | Agents |
+|------|-------|-------|----------|--------|
+| 🔴 Pro | `gemini-3.1-pro-preview` | Pre-middle | Tests, single-file code, data processing, analysis, schemas | python-dev, quant, tester, data-analyst, prompt-smith, researcher |
+| 🟡 Flash | `gemini-3-flash-preview` | Junior | Documentation, simple reports | documenter |
+| 🟢 Lite | `gemini-3.1-flash-lite-preview` | Intern | Configs, simple edits | devops |
 
-No need to specify model in prompt — agent YAML `model:` field handles routing.
+**Removed from dispatch:** `langgraph-architect`, `reviewer` — their tasks are too complex for subagent quality. Antigravity handles these directly.
 
 ## Prompt template
 
 Structure: **WHAT** + **CONTEXT** + **OUTPUT** + **VERIFY**
 
 ```
-@<agent> <WHAT: clear task description>.
-<CONTEXT: relevant files, constraints, architecture notes>.
+@<agent> <WHAT: clear, narrow task description>.
+<CONTEXT: relevant files, exact constraints, architecture notes>.
 <OUTPUT: where to save, format expectations>.
 <VERIFY: what to run after (tests, lint, checks)>.
 ```
 
-### Examples
+**Key:** The more specific the prompt, the better the result. Vague = garbage.
+
+### Good dispatch examples (appropriate complexity)
 
 ```bash
-# Tester
+# ✅ Tester: write tests for ONE module (clear scope)
 gemini -p "@tester Write pytest tests for src/trading/risk_manager.py. Cover: happy path (valid trade within limits), edge cases (zero amount, negative price, exactly-at-limit), error cases (exceed daily limit, invalid symbol). Use AsyncMock for MOEX client. Save to tests/test_risk_manager.py. Run pytest --tb=short after." --yolo
 
-# Reviewer (read-only)
-gemini -p "@reviewer Review src/agents/debater.py. Check: logic correctness, error handling, type safety, Pydantic schema usage, async patterns. Report format: 🔴 Critical / 🟡 Important / 🟢 Minor / ✅ Good. Score 1-10." --yolo
+# ✅ Documenter: update docs (simple task)
+gemini -p "@documenter Update .foryou/PROJECT_MAP.md to include new src/news/ module. Add file tree with descriptions. Use Russian and Mermaid diagrams." --yolo
 
-# Parallel: review + test simultaneously
-# (launch as separate run_command calls)
-gemini -p "@reviewer Review src/market/indicators.py" --yolo &
-gemini -p "@tester Write tests for src/market/indicators.py" --yolo &
+# ✅ Data-analyst: data pipeline (single-file, well-defined)
+gemini -p "@data-analyst Write src/market/parser.py — parse MOEX ISS candles JSON response into list[Candle] Pydantic models. Handle empty data, missing fields, invalid dates. Add type hints. Run ruff check after." --yolo
+
+# ✅ Parallel: tests + docs (both simple, independent)
+gemini -p "@tester Write tests for src/market/parser.py" --yolo &
+gemini -p "@documenter Document src/market/parser.py in .foryou/" --yolo &
+```
+
+### BAD dispatch examples (too complex — do yourself)
+
+```bash
+# ❌ Multi-file architecture — DO YOURSELF
+gemini -p "@langgraph-architect Design the full agent graph..." --yolo
+
+# ❌ Complex refactoring — DO YOURSELF
+gemini -p "@python-dev Refactor all agents to use new state schema..." --yolo
+
+# ❌ Security-critical code — DO YOURSELF
+gemini -p "@python-dev Implement auth middleware with JWT..." --yolo
 ```
 
 ## Execution from Antigravity
 
 ```
-1. Decide: does task need subagent? → which one (check model routing table)
-2. Build command with template above
-3. Execute via run_command (WaitMsBeforeAsync: 500 → goes to background)
-4. For parallel tasks: launch multiple run_command simultaneously
-5. Monitor via command_status (WaitDurationSeconds: 300)
-6. Parse stdout → synthesize results → report to user
+1. Classify task complexity (see gate above)
+2. If ≤ pre-middle → pick agent, build prompt
+3. If > pre-middle → DO IT YOURSELF, skip dispatch
+4. Execute via run_command (WaitMsBeforeAsync: 500 → background)
+5. For parallel tasks: launch multiple run_command simultaneously
+6. Monitor via command_status (WaitDurationSeconds: 300)
+7. ALWAYS review subagent output — they make mistakes
+8. Fix issues yourself if quality is insufficient
 ```
 
 ## Self-QA cycle (embedded in each agent)
@@ -84,12 +133,13 @@ Every agent follows this cycle after completing primary task:
 
 | Rule | Why |
 |------|-----|
+| Always classify complexity first | Prevents quality disasters |
 | Always `--yolo` for automated calls | No manual confirmation needed |
 | Always `--cwd <project_root>` | Agent needs correct working directory |
 | Full context in prompt | Subagent has clean context, knows nothing |
 | Never pass API keys in prompt | Security: keys stay in .env |
-| One task per call | Keep scope focused |
-| Check exit code | 0 = success, non-zero = investigate |
+| One narrow task per call | Keep scope focused |
+| ALWAYS review output | Subagents produce pre-middle quality at best |
 
 ## Error handling
 
@@ -98,11 +148,6 @@ Agent failed? →
   1. Read stderr from command_status
   2. If timeout → re-run with simpler scope
   3. If tool error → check agent YAML tools list
-  4. If logic error → add more context to prompt, retry
-  5. 2+ failures → escalate to user (error-recovery skill)
+  4. If low quality output → don't retry, do it yourself
+  5. 2+ failures → do it yourself (don't waste time)
 ```
-
-## Limitations
-- Subagent has NO access to current Antigravity conversation context
-- Subagent cannot call other subagents (no nesting)
-- Max runtime depends on model limits and max_turns setting
