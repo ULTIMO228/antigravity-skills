@@ -1,40 +1,74 @@
 ---
 name: research
 description: >
-  Используй когда встречаешь незнакомую технологию, библиотеку, API или паттерн. Вместо
-  того чтобы гадать — проведи исследование: проверь официальную документацию, changelog,
-  GitHub issues, совместимость версий. Предотвращает использование устаревших API и
-  несовместимых решений.
+  Deep research loop for unfamiliar tech, APIs, patterns. Decomposes
+  query, searches multiple sources, cross-verifies, fills gaps, saves
+  findings to .foryou/research/. Prevents outdated API usage.
 ---
 
-# research
+# research — Deep Research Loop
 
 ## Procedure
 
-1. **Identify gap**: что именно незнакомо? Библиотека? API? Паттерн? Версия?
-2. **Check sources** (в этом порядке):
-   - Official docs (всегда первый источник) → `read_url_content` на docs URL
-   - GitHub repo: README, CHANGELOG.md, releases page → breaking changes?
-   - GitHub issues/discussions → known bugs, workarounds
-   - `package.json` / lock file → exact installed version
-   - Migration guides (если обновляли версию)
-3. **Version check**: installed version matches docs version? Old docs ≠ current API.
-4. **Verify compatibility**:
-   - Does lib X work with framework Y at version Z?
-   - Check peer dependencies
-   - Check minimum Node/Python/runtime version
-5. **Summarize findings** to user:
-   ```
-   Исследовал <library>:
-   - Версия: <installed> (latest: <latest>)
-   - Ключевое: <что важно знать>
-   - Gotchas: <подводные камни>
-   - Breaking changes от нашей версии: <если есть>
-   ```
-6. If research insufficient → recommend `deep-context` for deeper analysis
+### Step 0: Context
+Read `.ai/SKILL_CONFIG.md` → know current stack + versions.
 
-## Anti-patterns (чего НЕ делать)
-- ❌ Не использовать устаревшие примеры со StackOverflow без проверки версии
-- ❌ Не предполагать API по названию — всегда проверять docs
-- ❌ Не копировать код из примеров без понимания что он делает
-- ❌ Не игнорировать deprecation warnings
+### Step 1: Decompose
+Break query → sub-questions:
+```
+"How does Hurst Exponent detect market regimes?"
+→ Q1: What is Hurst Exponent? (math definition)
+→ Q2: How to calculate in Python? (libraries, code)
+→ Q3: How to interpret H values for regime detection?
+→ Q4: Existing implementations in trading systems?
+```
+
+### Step 2: Search (parallel when possible)
+Priority order:
+1. Official docs → `read_url_content` on docs URL
+2. GitHub repo: README, CHANGELOG, releases → breaking changes?
+3. GitHub issues/discussions → known bugs, workarounds
+4. Academic papers / reliable sources → for domain topics
+5. Package manifest → exact installed version
+
+### Step 3: Verify
+| Check | How |
+|-------|-----|
+| Version match | installed version matches docs version? |
+| Compatibility | lib X + framework Y at version Z? |
+| Peer deps | check requirements |
+| Deprecation | any deprecation warnings? |
+| Cross-reference | ≥ 2 sources agree? |
+
+### Step 4: Gap check
+Missing info after Step 2-3?
+→ Refine query, re-search with new keywords.
+→ Max 3 iterations to prevent infinite loop.
+
+### Step 5: Synthesize
+Structure findings:
+```
+Исследовал <topic>:
+- Версия: <installed> (latest: <latest>)
+- Ключевое: <core findings>
+- Gotchas: <pitfalls and edge cases>
+- Breaking changes: <if any from our version>
+- Рекомендация: <what to do>
+- Источники: <URLs>
+```
+
+### Step 6: Save
+Write `.foryou/research/<topic>.md` — full report in Russian.
+Beautiful formatting with headers, code examples, links.
+
+### Step 7: Update session
+Append note to `.ai/SESSIONS.md`: `Research:<topic> => <1-line summary>`
+
+## Anti-patterns
+- ❌ Using outdated StackOverflow answers without version check
+- ❌ Assuming API from name — always verify docs
+- ❌ Copy-paste code without understanding
+- ❌ Ignoring deprecation warnings
+- ❌ Single-source conclusions
+
+→ If research insufficient: recommend `deep-context` skill

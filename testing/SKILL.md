@@ -1,49 +1,57 @@
 ---
 name: testing
 description: >
-  Используй когда реализована бизнес-логика, завершена фича, или пользователь просит
-  написать тесты. Определяет тип тестов (unit/integration/e2e), покрывает happy path,
-  edge cases и error cases по паттерну AAA. Запускает тесты и проверяет результат.
+  Write tests for completed features. Detects stack (Python/TS),
+  loads correct reference, follows AAA pattern. Min 3 tests per function:
+  happy path + edge case + error case. Runs tests after writing.
 ---
 
-# testing
+# testing — Multi-Stack Test Writer
+
+## Step 0: Stack detection
+Read `.ai/SKILL_CONFIG.md` → load matching reference:
+- Python → read `references/python-pytest.md`
+- TypeScript → read `references/ts-vitest.md`
 
 ## Procedure
 
-1. **Type**: isolated fn → unit | API/module interaction → integration | user journey → e2e. Priority: unit > integration > e2e.
-2. **Tools**: check package.json for existing runner. Defaults: Vitest (Vite) | Jest (other) | Playwright (e2e). No runner → propose install.
-3. **Placement**: follow existing convention (`__tests__/` | `*.test.ts` | `tests/`). No convention → `src/__tests__/<module>.test.ts`
-4. **Write** by AAA pattern. Min 3 tests/function: happy + edge + error. Names на русском.
+### 1. Classify test type
+| Signal | Type | Priority |
+|--------|------|----------|
+| Isolated fn, pure logic | unit | highest |
+| API/module interaction | integration | medium |
+| User journey, full flow | e2e | lowest |
 
-```typescript
-import { describe, it, expect, vi } from 'vitest'
+### 2. Detect test runner
+Python: `pyproject.toml` → pytest section? | `pytest.ini`?
+TS: `package.json` → vitest | jest | playwright
+None found → propose install.
 
-const mockRepo = { findByEmail: vi.fn() }
+### 3. Placement
+Follow existing convention:
+- Python: `tests/test_<module>.py` | `tests/<module>/test_<feature>.py`
+- TS: `__tests__/` | `*.test.ts` | `tests/`
+No convention → propose structure.
 
-describe('AuthService', () => {
-  it('должен вернуть токен при валидных данных', async () => {
-    // Arrange
-    mockRepo.findByEmail.mockResolvedValue({ id: '1', email: 'a@b.com' })
-    // Act
-    const result = await svc.login({ email: 'a@b.com', password: 'ok' })
-    // Assert
-    expect(result.token).toBeDefined()
-  })
+### 4. Write tests (AAA pattern)
+Min 3 tests per function:
+- ✅ Happy path (valid input → expected output)
+- ⚠️ Edge case (boundary, null, empty, zero, max)
+- ❌ Error case (invalid input → proper error)
 
-  it('должен обработать пустой email', async () => {
-    await expect(svc.login({ email: '', password: 'x' }))
-      .rejects.toThrow('Email обязателен')
-  })
+Test names: descriptive, in Russian (for readability).
 
-  it('должен выбросить ошибку при неверном пароле', async () => {
-    mockRepo.findByEmail.mockResolvedValue({ id: '1' })
-    await expect(svc.login({ email: 'a@b.com', password: 'wrong' }))
-      .rejects.toThrow('Неверные учётные данные')
-  })
-})
-```
+### 5. Rules
+| Rule | Why |
+|------|-----|
+| Test behavior, not implementation | Survives refactoring |
+| Each test independent | No order dependency |
+| Mock external deps only | DB, API, file system |
+| Don't chase 100% coverage | Focus business logic ≥ 80% |
+| No test logic | No if/else in tests |
 
-5. **Rules**: test behavior not implementation | each test independent | mock external deps only | don't chase 100% coverage — focus business logic ≥ 80%
-6. **Run**: `pnpm test`. All must pass. Coverage optional: `pnpm test --coverage`
+### 6. Run
+Execute test runner. All must pass.
+Coverage: run with `--cov` flag if available.
 
-→ After: `code-review` or `git-commit`
+→ After: `code-review` | `git-commit`
