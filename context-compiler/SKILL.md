@@ -7,69 +7,69 @@ description: >
   или когда пользователь говорит "собери контекст", "проанализируй проект", "context".
 ---
 
-# context-compiler — Автосбор контекста проекта
+# context-compiler — Full Project Context Builder
 
-## Когда вызывать
+## When to trigger
 
-- Сложная задача (>2 файлов, незнакомый модуль)
-- Первый вход в проект → нужен стек, паттерны, зависимости
-- Пользователь: "собери контекст", "проанализируй проект", "context"
-- Режим `hard` → обязательный первый шаг
-- Перед архитектурным решением
+- Complex task (>2 files, unfamiliar module)
+- First entry into a project → need stack, patterns, deps
+- User says: "собери контекст", "проанализируй проект", "context"
+- `hard` mode → mandatory first step
+- Before architectural decisions
 
-НЕ вызывать: простые правки (1-2 файла), `.ai/CONTEXT.md` актуален, нет notebook_id.
+Skip if: simple edits (1-2 files), `.ai/CONTEXT.md` is fresh, no notebook_id.
 
-## Как вызвать
+## How to call
 
 ```
 call_mcp_tool(
   ServerName="context-compiler",
   ToolName="build_context",
   Arguments={
-    "task": "Описание задачи",
-    "notebook_id": "ID ноутбука NotebookLM",
-    "workspace": "/путь/к/проекту"
+    "task": "Task description",
+    "notebook_id": "NotebookLM notebook ID",
+    "workspace": "/path/to/project"
   }
 )
 ```
 
-| Параметр | Обяз. | Описание |
-|----------|:-----:|----------|
-| `task` | ✅ | Конкретное описание задачи |
-| `notebook_id` | ✅ | ID ноутбука NotebookLM |
-| `workspace` | — | Путь к проекту (default: saas-platform) |
+| Param | Req | Description |
+|-------|:---:|-------------|
+| `task` | ✅ | Specific task description |
+| `notebook_id` | ✅ | NotebookLM notebook ID |
+| `workspace` | — | Project path (default: saas-platform) |
 
-notebook_id → вызови `notebook_list` через MCP `notebooklm-mcp` → найди по имени.
+To get notebook_id → `notebook_list` via MCP `notebooklm-mcp` → find by name.
 
-## Что делает (под капотом)
+## Pipeline (under the hood)
 
-1. Bootstrap → project_tree(4), configs, git_log(30)
-2. Декомпозиция → определяет домены (API, DB, UI, Celery, Auth...)
-3. Сбор → 25+ вопросов NLM × 7 категорий + верификация кодом
-4. Самоаудит → 7 аспектов уверенности, досбор пробелов (до 7 раундов)
-5. Компиляция → save_context → `.ai/CONTEXT.md`
+1. Bootstrap → project_tree(depth=4), configs, git_log(30)
+2. Decomposition → identify domains (API, DB, UI, Celery, Auth...)
+3. Collection → 25+ NLM questions × 7 categories + code verification
+4. Self-audit → 7 confidence aspects, gap filling (up to 7 rounds)
+5. Compilation → save_context → `.ai/CONTEXT.md`
 
-Время: 3-10 мин. Модель: Gemma 4 31B-IT (1500 RPD free tier).
+Duration: 3-10 min. Model: Gemma 4 31B-IT (1500 RPD free tier).
 
-## Выход: .ai/CONTEXT.md
+## Output: .ai/CONTEXT.md
 
-Секции: Стек (версии + SOURCE) | Реализовано (модули, файлы, API) | Паттерны (с примерами кода) | Зависимости (таблица) | НЕ ДЕЛАТЬ | Интеграции (карта связей) | Тестирование | Env | Уверенность (7 аспектов).
+Sections: Stack (versions + SOURCE) | Implemented (modules, files, API) | Patterns (with code examples) | Dependencies (table) | Anti-patterns | Integrations (connection map) | Testing | Env vars | Confidence (7 aspects).
 
-Копия → `.ai/context_history/CONTEXT_YYYYMMDD_HHMMSS.md`.
+History copy → `.ai/context_history/CONTEXT_YYYYMMDD_HHMMSS.md`.
 
-## Воркфлоу
+## Workflow
 
 ```
-Сложная задача → build_context(task, notebook_id) → view_file(.ai/CONTEXT.md) → реализация
+Complex task → build_context(task, notebook_id) → view_file(.ai/CONTEXT.md) → implement
 ```
 
-## Требования
+## Requirements
 
-- MCP `context-compiler` запущен + `GEMINI_API_KEY` в env
-- Проект загружен в NotebookLM (есть notebook_id)
+- MCP `context-compiler` running + `GEMINI_API_KEY` in env
+- Project loaded into NotebookLM (notebook_id exists)
 
-## Связанные скиллы
+## Related skills
 
-- `notebooklm` → управление ноутбуками, добавление источников
-- `architecture-map` → карта проекта (после контекста)
-- `deep-context` → сверхглубокие рассуждения
+- `notebooklm` → notebook management, adding sources
+- `architecture-map` → project map (after context)
+- `deep-context` → deep reasoning tasks
